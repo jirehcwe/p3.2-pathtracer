@@ -199,7 +199,7 @@ class PathTracer {
   /**
    * Trace a camera ray given by the pixel coordinate.
    */
-  Spectrum raytrace_pixel(size_t x, size_t y);
+  Spectrum raytrace_pixel(size_t x, size_t y, bool useThinLens);
 
   /**
    * Raytrace a tile of the scene and update the frame buffer. Is run

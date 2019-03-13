@@ -31,10 +31,10 @@ Vector3D UniformHemisphereSampler3D::get_sample() const {
 // Uniform Sphere Sampler3D Implementation //
 
 Vector3D UniformSphereSampler3D::get_sample() const {
-    double z = random_uniform();
+    double z = random_uniform() * 2 - 1;
     double sinTheta = sqrt(std::max(0.0, 1.0f - z * z));
 
-    double phi = 2.0f * M_PI * random_uniform();
+    double phi = 2.0f * PI * random_uniform();
 
     return Vector3D(cos(phi) * sinTheta, sin(phi) * sinTheta, z);
 }

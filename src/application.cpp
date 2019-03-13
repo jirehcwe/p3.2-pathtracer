@@ -98,21 +98,21 @@ void Application::init() {
 
 void Application::initialize_style() {
   // Colors.
-  defaultStyle.halfedgeColor = Color( 0.3, 0.3, 0.3, 1.0 );
-    hoverStyle.halfedgeColor = Color( 0.6, 0.6, 0.6, 1.0 );
-   selectStyle.halfedgeColor = Color( 1.0, 1.0, 1.0, 1.0 );
+  defaultStyle.halfedgeColor = Color( 0.3, 0.3, 0.3);
+    hoverStyle.halfedgeColor = Color( 0.6, 0.6, 0.6);
+   selectStyle.halfedgeColor = Color( 1.0, 1.0, 1.0);
 
-  defaultStyle.faceColor = Color( 0.3, 0.3, 0.3, 1.0 );
-    hoverStyle.faceColor = Color( 0.6, 0.6, 0.6, 1.0 );
-   selectStyle.faceColor = Color( 1.0, 1.0, 1.0, 1.0 );
+  defaultStyle.faceColor = Color( 0.3, 0.3, 0.3);
+    hoverStyle.faceColor = Color( 0.6, 0.6, 0.6);
+   selectStyle.faceColor = Color( 1.0, 1.0, 1.0);
 
-  defaultStyle.edgeColor = Color( 0.3, 0.3, 0.3, 1.0 );
-    hoverStyle.edgeColor = Color( 0.6, 0.6, 0.6, 1.0 );
-   selectStyle.edgeColor = Color( 1.0, 1.0, 1.0, 1.0 );
+  defaultStyle.edgeColor = Color( 0.3, 0.3, 0.3);
+    hoverStyle.edgeColor = Color( 0.6, 0.6, 0.6);
+   selectStyle.edgeColor = Color( 1.0, 1.0, 1.0);
 
-  defaultStyle.vertexColor = Color( 0.3, 0.3, 0.3, 1.0 );
-    hoverStyle.vertexColor = Color( 0.6, 0.6, 0.6, 1.0 );
-   selectStyle.vertexColor = Color( 1.0, 1.0, 1.0, 1.0 );
+  defaultStyle.vertexColor = Color( 0.3, 0.3, 0.3);
+    hoverStyle.vertexColor = Color( 0.6, 0.6, 0.6);
+   selectStyle.vertexColor = Color( 1.0, 1.0, 1.0);
 
   // Primitive sizes.
   defaultStyle.strokeWidth = 1.0;
@@ -432,15 +432,17 @@ void Application::keyboard_event(int key, int event, unsigned char mods) {
           case '+': case '=':
           case '-': case '_':
           case '.': case '>':
-          case ',': case '<':  
-          case ';': case ':':
-          case '\'': case '\"':
-          case 'k': case 'K':
-          case 'l': case 'L':
+          case ',': case '<':
+          case 'h': case 'H':
+          case 'q': case 'Q': case 'W': case 'w': 
+          case 'z': case 'x': case 'Z': case 'X':
+          case ';': case '\'': 
+          case '0': case '1': case '2': case '3': case '4':
             pathtracer->stop();
             pathtracer->key_press(key);
             pathtracer->start_raytracing();
             break;
+
           case 'F': case 'A':
           case 'C': 
             pathtracer->key_press(key);

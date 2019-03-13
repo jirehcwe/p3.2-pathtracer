@@ -168,24 +168,14 @@ void Camera::load_settings(string filename) {
   cout << "[Camera] Loaded settings from " << filename << endl;
 }
 
-Ray Camera::generate_ray(double x, double y) const {
-
-  // TODO (Part 1.2):
-  // compute position of the input sensor sample coordinate on the
-  // canonical sensor plane one unit away from the pinhole.
-  // Note: hFov and vFov are in degrees.
-  // 
-
-  return Ray(Vector3D(), Vector3D());
-
-}
 
 Ray Camera::generate_ray_for_thin_lens(double x, double y, double rndR, double rndTheta) const {
 
-    // Todo 3-2, Task 4:
+    // TODO: 4.1
     // compute position and direction of ray from the input sensor sample coordinate.
     // Note: use rndR and rndTheta to uniformly sample a unit disk.
-    return Ray(Vector3D(),Vector3D());
+
+    return Ray(Vector3D(), Vector3D());
 }
 
 

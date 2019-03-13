@@ -167,7 +167,7 @@ class MicrofacetBSDF : public BSDF {
   double Lambda (const Vector3D& w) {
       double theta = getTheta(w);
       double a = 1.0 / (alpha * tan(theta));
-      return 0.5 * (erf(a) - 1.0 + exp(-a * a) / (a * M_PI));
+      return 0.5 * (erf(a) - 1.0 + exp(-a * a) / (a * PI));
   }
 
   Spectrum F(const Vector3D& wi);
