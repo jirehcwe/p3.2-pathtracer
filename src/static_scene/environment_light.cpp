@@ -34,14 +34,35 @@ void EnvironmentLight::init() {
 		for (int i = 0; i < w; ++i) {
             pdf_envmap[w * j + i] = envMap->data[w * j + i].illum() * sin(PI * (j+.5) / h);
             sum += pdf_envmap[w * j + i];
+
 		}
 	}
 
+  
   // TODO: 3.3 step 2
   // Store the marginal distribution for y to marginal_y. Make sure to normalize pdf_envmap.
 
+  for (int j=0 ; j < h; j++){
+    for (int i=0; i< w; i++){
+      pdf_envmap[w * j+ i] /= sum;
+    }
+  }
+
+  double runningSum = 0;
+  for (int j=0; j< h; j++){
+    double currentSum = 0;
+    for (int i = 0; i< w; i++){
+      for (int jPrime = 0; jPrime < j; jPrime++){
+        currentSum += pdf_envmap[w * jPrime + i];
+      }
+      runningSum += currentSum;
+      conds_y[j] = runningSum;
+      marginal_y[j] = runningSum;
+    }
+  }
   // TODO: 3.3 step 3
   // Store the conditional distribution for x given y to conds_y
+
 
 
 	if (true) {
@@ -129,7 +150,11 @@ Spectrum EnvironmentLight::sample_L(const Vector3D& p, Vector3D* wi,
                                     float* pdf) const {
   // TODO: 3.2
 	// First implement uniform sphere sampling for the environment light
-
+  Vector3D dir = sampler_uniform_sphere.get_sample();
+  Vector2D thetaphi = dir_to_theta_phi(dir);
+  Spectrum radiance = bilerp(theta_phi_to_xy(thetaphi));
+  *distToLight = INF_D;
+  *pdf = 1/(4*PI);
   // TODO: 3.3
 	// Later implement full importance sampling
 
@@ -141,7 +166,7 @@ Spectrum EnvironmentLight::sample_dir(const Ray& r) const {
 	// Use the helper functions to convert r.d into (x,y)
 	// then bilerp the return value
 
-	return Spectrum();
+	return bilerp(theta_phi_to_xy(dir_to_theta_phi(r.d)));
 
 }
 

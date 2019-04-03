@@ -175,7 +175,27 @@ Ray Camera::generate_ray_for_thin_lens(double x, double y, double rndR, double r
     // compute position and direction of ray from the input sensor sample coordinate.
     // Note: use rndR and rndTheta to uniformly sample a unit disk.
 
-    return Ray(Vector3D(), Vector3D());
+
+    Vector3D bottomLeft = Vector3D(-tan(radians(hFov)*.5), -tan(radians(vFov)*.5),(double)1);
+    Vector3D topRight = Vector3D(tan(radians(hFov)*.5),  tan(radians(vFov)*.5),(double)1);
+
+    Vector3D pointOnSensor = Vector3D(-((1-x)*bottomLeft.x + x*topRight.x), -((1-y)*bottomLeft.y + y*topRight.y), (double)1.0);
+    Vector3D dirToFocalPointFromCentre = Vector3D(0,0,0)-pointOnSensor;
+    Ray throughCentreLensRay = Ray(Vector3D(0,0,0), dirToFocalPointFromCentre);
+    Vector3D pLens = Vector3D(lensRadius*sqrt(rndR)*cos(rndTheta), lensRadius*sqrt(rndR)*sin(rndTheta), 0);
+
+    double tValAtFocalPoint = -focalDistance/dirToFocalPointFromCentre.z;
+    Vector3D pFocal = throughCentreLensRay.at_time(tValAtFocalPoint);
+    Vector3D dirToFocal = pFocal-pLens;
+    dirToFocal.normalize();
+
+    Vector3D worldDirToFocal = c2w*dirToFocal;
+    Vector3D worldPLens = c2w*pLens + pos;
+
+    Ray rayForLens = Ray(worldPLens, worldDirToFocal);
+    rayForLens.min_t = nClip;
+    rayForLens.max_t = fClip;
+    return rayForLens;
 }
 
 
