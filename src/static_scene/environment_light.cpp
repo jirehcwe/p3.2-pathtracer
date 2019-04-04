@@ -42,28 +42,33 @@ void EnvironmentLight::init() {
   // TODO: 3.3 step 2
   // Store the marginal distribution for y to marginal_y. Make sure to normalize pdf_envmap.
 
-  for (int j=0 ; j < h; j++){
-    for (int i=0; i< w; i++){
-      pdf_envmap[w * j+ i] /= sum;
-    }
+  for (int m = 0; m< h*w; m++){
+      pdf_envmap[m] = pdf_envmap[m]/sum;
+   
   }
 
+
+  double preCalcPart2[h];
   double runningSum = 0;
-  for (int j=0; j< h; j++){
-    double currentSum = 0;
-    for (int i = 0; i< w; i++){
-      for (int jPrime = 0; jPrime < j; jPrime++){
-        currentSum += pdf_envmap[w * jPrime + i];
-      }
-      runningSum += currentSum;
-      conds_y[j] = runningSum;
-      marginal_y[j] = runningSum;
+  double currentDensity = 0;
+  for (int j = 0; j< h; j++){
+    for (int i = 0; i < w; i++){
+      currentDensity += pdf_envmap[w * j + i];
+      runningSum += pdf_envmap[w * j + i];
     }
+    preCalcPart2[j] = currentDensity;
+    marginal_y[j] = runningSum;
+    currentDensity = 0;
   }
+
   // TODO: 3.3 step 3
   // Store the conditional distribution for x given y to conds_y
 
-
+  for (int j = 0; j< h; j++){
+    for (int i = 1; i < w; i++){
+      conds_y[w * j + i] = conds_y[w * j + i - 1] + pdf_envmap[w * j + i] / preCalcPart2[j];
+    }
+  }
 
 	if (true) {
     std::cout << "Saving out probability_debug image for debug." << std::endl;
@@ -153,12 +158,25 @@ Spectrum EnvironmentLight::sample_L(const Vector3D& p, Vector3D* wi,
   Vector3D dir = sampler_uniform_sphere.get_sample();
   Vector2D thetaphi = dir_to_theta_phi(dir);
   Spectrum radiance = bilerp(theta_phi_to_xy(thetaphi));
+  *wi = dir;
   *distToLight = INF_D;
-  *pdf = 1/(4*PI);
+  *pdf = 1.0/(4.0*PI);
+  return radiance;
   // TODO: 3.3
 	// Later implement full importance sampling
 
-  return Spectrum();
+  Vector2D sample = sampler_uniform2d.get_sample();
+	int xVal, yVal;
+
+	yVal = (int) (std::upper_bound(marginal_y, marginal_y + envMap->h, sample.x) - marginal_y);
+	xVal = (int) (std::upper_bound(conds_y + yVal * envMap->w, conds_y + yVal * envMap->w + envMap->w, sample.y) - (conds_y + yVal * envMap->w));
+
+	Vector2D newSample = Vector2D(xVal, yVal);
+	*wi = theta_phi_to_dir(xy_to_theta_phi(newSample));
+	*distToLight = INF_D;
+	*pdf = pdf_envmap[xVal + yVal * envMap->w] * (double)envMap->w * (double)envMap->h / (2 * PI * PI * sin(xy_to_theta_phi(newSample).x));
+
+	return envMap->data[xVal + yVal * envMap->w];
 }
 
 Spectrum EnvironmentLight::sample_dir(const Ray& r) const {

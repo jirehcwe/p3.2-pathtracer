@@ -1,60 +1,401 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 <head>
-<style>  
-    div.padded {  
-      padding-top: 0px;  
-      padding-right: 100px;  
-      padding-bottom: 0.25in;  
-      padding-left: 100px;  
-    }  
-  </style> 
-<title>Your Name  |  CS 184</title>
+<style>
+  body {
+    padding: 100px;
+    width: 1000px;
+    margin: auto;
+    text-align: left;
+    font-weight: 300;
+    font-family: 'Open Sans', sans-serif;
+    color: #121212;
+  }
+  h1, h2, h3, h4 {
+    font-family: 'Source Sans Pro', sans-serif;
+  }
+</style>
+<title>CS 184 Mesh Editor</title>
 <meta http-equiv="content-type" content="text/html; charset=utf-8" />
-<link rel="stylesheet" type="text/css" href="style.css" media="screen" />
+<link href="https://fonts.googleapis.com/css?family=Open+Sans|Source+Sans+Pro" rel="stylesheet">
 </head>
+
+
 <body>
-<br />
-<h1 align="middle">Assignment 3: PathTracer</h1>
-    <h2 align="middle">Your Name</h2>
 
-    <div class="padded">
-        <p>Use this section to write an overview of the assignment. All of the text in your write-up should be <em>in your own words</em>. If you need to add additional HTML features to this document, you can search the <a href="http://www.w3schools.com/">http://www.w3schools.com/</a> website for instructions. To edit the HTML, you can just copy and paste existing chunks and fill in the text and image file names appropriately.</p>
-        <o>The website writeup is intended to be a self-contained walkthrough of the assignment: we want this to be a piece of work which showcases your understanding of relevant concepts through both mesh images as well as written explanations about what you did to complete each part of the assignment. Try to be as clear and organized as possible when writing about your own output files or extensions to the assignment. We want to understand what you've achieved and how you've done it!</p> 
-        <p>If you are well-versed in web development, feel free to ditch this template and make a better looking page. Just make sure that you include all the components as we've laid them out here. </p>
+<h1 align="middle">CS 184: Computer Graphics and Imaging, Spring 2019</h1>
+<h1 align="middle">Project 3-2: Pathtracer</h1>
+<h2 align="middle">Jireh Wei En Chew, CS184-agu</h2>
 
-    <h2 align="middle">Part 1: Ray Generation and Intersection</h2>
-        <p>Describe what you did in Part 1. etc...</p>
-        <div align="center">
-            <table style="width=100%">
-                <tr>
-                    <td align="middle">
-                    <img src="images/example_image.png" width="480px" />
-                    <figcaption align="middle">Results Caption: my bunny is the bounciest bunny</figcaption>
-                </tr>
-            </table>
+<br><br>
+
+<div>
+
+<h1 align="middle">Overview</h2>
+<p>After project 3-1, we've implemented a simple diffuse material, but have yet to include more advanced materials like glass (transparent materials that refract and reflect), mirror materials (complete reflection) as well as microfacet materials. 
+  
+  <br><br>In this project, we implement these materials, as well as a new environment light, which uses a texture (created from a 360-degree image of a scene) to sample that scene's lighting and use that to light objects 
+  in the scene.
+  
+  <br><br>Finally, we also implement a virtual camera model to improve our pinhole camera model, by introducing a thin lens and aperture to our camera to create depth of field effects.
+</p>
+
+
+<h2 align="middle">Part 1: Mirror and Glass Materials</h3>
+<p>In order to implement glass and mirror materials, these helper functions are implemented: <i>reflect</i> and <i>refract</i>.<br>
+
+  <ul>
+
+  <li>
+  <i>reflect</i> simply takes the incoming direction and negates the <i>x</i> and <i>y</i> components. <ul><li>This is possible as the surface normal is 
+  in the positive z direction as the calculations are done in object coordinate space.</li></ul>
+  </li>
+  <li>
+  In <i>MirrorBSDF::sample_f</i>, <i>wo</i> is used in <i>reflect</i> function to get <i>wi</i>. 
+  <ul><li>The reflectance divided by <i>abs_cos_theta</i> of <i>wi</i> is returned. 
+   The division is to cancel out the cosine term that <i>at_least_one_bounce_radiance</i> will weight the sample by.</li>
+   <li><i>pdf</i> is returned as 1 as there is only 1 possible ray that can be reflected on the point, so the probability is 1.</li>
+  </ul>
+  </li>
+  <li><i>refract</i> is slightly trickier: <ul><li>
+    The ratio of the old index of refraction to new index of refraction is calculated. The index of refraction for air is taken to be 1. For transiting from air to the material (entering), the ratio would be 
+    1/<i>ior</i> and from material to the air (exiting) it will be <i>ior</i>. This value is used in subsequent calculations for the direction of the refracted ray.
+  </li>
+<li>
+  The ray is checked if it undergoes total internal reflection. If it does, false is returned and no refraction occurs.
+</li>
+<li>
+  If not, Snell's law is used to calculate the new spherical coordinates of the refracted ray, and convert them back to Cartesian coordinates, and populate <i>wi</i>.
+</li>
+<li>
+  For the sign of z-value of the refracted ray, it is assigned to be on the other side of the x-y plane from the <i>wo</i> ray.
+</li>
+</ul></li>
+<li>With <i>refract</i> implemented, <i>GlassBSDF::sample_f</i> can be implemented.
+<ul>
+  <li>
+    Use <i>refract</i> to check for total internal reflection.
+  </li>
+  <li>
+    If there is, the ray is reflected completely and <i>wi</i> is set with <i>reflect</i>. <i>pdf</i> is returned as 1 and the <i>Spectrum</i> returned is the same as in <i>MirrorBSDF::sample_f</i>.
+  </li>
+  <li>
+    If there is refraction, Schlick's approximation is used to calculate <i>R</i>, the reflection coefficient. to get the probability of the light being reflected.
+  </li>
+  <li>is assigned to be <i>R</i>, and <i>Spectrum</i> is returned similarly as to the total internal reflection case, but weighted by <i>R</i>.
+  </li>
+  <li>Else, <i>wi</i> is assigned with <i>refract</i> and <i>pdf</i> is set to <i>1-R</i>. <i>Spectrum</i> is returned as the transmittance of the material weighted by <i>1-R</i>, <i>abs_cos_theta(*wi)</i> and <i>eta^2</i></li>
+  <li><i>eta</i> is the ratio calculated in <i>refract</i>.</li>
+</ul></li>
+  </ul>
+
+
+  
+<br><br>
+
+
+<div align="middle">
+    <table style="width=100%">
+      <tr>
+        <td>
+          <img src="images/Part1_CBspheres_ray_0.png" align="middle" width="400px"/>
+          <figcaption align="middle"><i>0 ray depth. <br>We only get direct lighting.</i></figcaption>
+        </td>
+        <td>
+            <img src="images/Part1_CBspheres_ray_1.png" align="middle" width="400px"/>
+            <figcaption align="middle"><i>1 ray depth. <br>We get direct and indirect lighting.</i></figcaption>
+          </td>
+      </tr>
+      <br>
+      <tr>
+        <td>
+          <img src="images/Part1_CBspheres_ray_2.png" align="middle" width="400px"/>
+          <figcaption align="middle"><i>2 ray depth. <br>Reflection off the spheres is apparent.</i></figcaption>
+        </td>
+        <td>
+            <img src="images/Part1_CBspheres_ray_3.png" align="middle" width="400px"/>
+            <figcaption align="middle"><i>3 ray depth. <br>Refraction is apparent as the rays exit the glass.</i></figcaption>
+          </td>
+      </tr>
+      <br>
+      <tr>
+        <td>
+          <img src="images/Part1_CBspheres_ray_4.png" align="middle" width="400px"/>
+          <figcaption align="middle"><i>4 ray depth. <br></i>The light rays can reflect off the ground.</figcaption>
+        </td>
+        <td>
+            <img src="images/Part1_CBspheres_ray_5.png" align="middle" width="400px"/>
+            <figcaption align="middle"><i>5 ray depth. <br>More rays can bounce inside the sphere to exit at reflect off the wall.</i></figcaption>
+          </td>
+      </tr>
+    </table>
+  </div>
+
+  <div align="middle">
+  <br>
+      <tr>
+        <td>
+          <img src="images/Part1_CBspheres_ray_100.png" align="middle" width="600px"/>
+          <figcaption align="middle"><i>100 ray depth. <br>Radiance has converged with no significant change.</i></figcaption>
+        </td>
+  </tr>
+  </div>
+
+  <p><b>Analysis of ray bounce and lighting in scene</b><ol>
+    
+    <li>With 0 bounces, only direct lighting effects are seen.
+    <li>With 1 bounce, the mirror and glass surfaces do not reflect light into the camera, and only indirect and direct lighting effects appear.</li>
+    <li>With 2 bounces we are able to see reflections on the mirror and glass surfaces. However, for the glass ball, since a lot of the light depends on the refraction of light rather than reflection, it is mostly black.</li>
+    <li>With 3 bounces, we can finally see the refraction of light inside the ball and it appears as glass. We also notice that the reflection of the walls of the box on the mirror ball are lit, as light rays have enough depth to bounce on the wall, on to the mirror ball, and into the camera.</li>
+    <li>With 4 bounces, the light inside the ball can reflect off the ground and thus there is a concentrated spot on light underneath the glass ball.</li>
+    <li>With the light inside can also reflect off more times inside the ball to cast a secondary bright spot on the red wall on the right.</li>
+    <li>With 100 bounces, we do not see any significant changes in the lighting of the scene.</li>
+  </ol>
+  </p>
+
+
+<br><br>
+<h2 align="middle">Part 2: Microfacet Materials</h3>
+
+<p>
+  In microfacet materials, we have to include multiple components in order to correctly represent both the macro-surface and micro-surface properties of the material.
+  <ul>
+    <li>
+      In <i>MicrofacetBSDF::f</i>, the radiance of the point is calculated with the Fresnel term, the shadow-masking term and the normal distribution function (which represents the micro-surface normals).
+    </li>
+    <br>
+    Implementation of the above terms as follows:
+    <li>
+      The normal distribution function uses a Beckmann distribution. We query the distribution at the half-vector, since we know that the microfacets that reflect the ray are only able to reflect wo to wi when the normal is the half vector.
+    </li>
+    <li>
+      The Fresnel term takes into account the parallel and perpendicular reflections and averages them. We use <i>eta</i> and <i>k</i> that represent RGB values to refract instead of calculating over every possible wavelength.`
+    </li>
+    <li>
+      Lastly, importance sampling is implemented: 
+      <ul>
+        <li>We generate 2 random numbers from 0 to 1 and use these to generate our random phi and theta values.</li>
+        <li>The normal is calculated from these values. We reflect wo along the normal to get <i>wi</i>.</li>
+        <li>We check if the reflected ray is valid. If it is not, we return pdf as 0 and empty Spectrum.</li>
+        <li>To find pdf, we use the inversion method described in  <a href="https://agraphicsguy.wordpress.com/2015/11/01/sampling-microfacet-brdf/">this website</a>.</li>
+        <li>Finally, sample the microfacet material with <i>wo</i> and <i>wi</i> and return the Spectrum.</li>
+      </ul> 
+      
+    </li>
+  </ul>
+
+  
+</p>
+
+<div align="middle">
+    <table style="width=100%">
+      <tr>
+        <td>
+          <img src="images/Part2_CBdragon_alpha_0_005.png" align="middle" width="400px"/>
+          <figcaption align="middle"><i>alpha = 0.005.<br>The shiniest, most reflective dragon.</i></figcaption>
+        </td>
+        <td>
+            <img src="images/Part2_CBdragon_alpha_0_05.png" align="middle" width="400px"/>
+            <figcaption align="middle"><i>alpha = 0.05. <br>Not as shiny, but diffusing light into the camera.</i></figcaption>
+          </td>
+      </tr>
+      <br>
+      <tr>
+        <td>
+          <img src="images/Part2_CBdragon_alpha_0_25.png" align="middle" width="400px"/>
+          <figcaption align="middle"><i>alpha = 0.25. <br>Diffused light is more apparent.</i></figcaption>
+        </td>
+        <td>
+            <img src="images/Part2_CBdragon_alpha_0_5.png" align="middle" width="400px"/>
+            <figcaption align="middle"><i>alpha = 0.5. <br>Diffused light is most apparent.</i></figcaption>
+          </td>
+      </tr>
+    </table>
+  </div>
+
+  <p>
+    As alpha increases, the lobe of diffused light grows, and this results in more diffusion of a ray of light on onne area. 
+      However, this also decreases the mirror properties as well, with the first dragon of alpha = 0.005 being the most reflective 
+      and the dragon of alpha = 0.5 being the least perfectly reflective.
+    
+  </p>
+
+  <div align="middle">
+      <table style="width=100%">
+        <tr>
+          <td>
+            <img src="images/Part2_CBbunny_cosine.png" align="middle" width="400px"/>
+            <figcaption align="middle"><i>Cosine sampling. <br>Bunny is noisy and reflections are not apparent.</i></figcaption>
+          </td>
+          <td>
+              <img src="images/Part2_CBbunny_importance.png" align="middle" width="400px"/>
+              <figcaption align="middle"><i>Importance sampling. <br>Reflections on bunny are better represented.</i></figcaption>
+            </td>
+        </tr>
+      </table>
+    </div>
+
+    <p>
+        Cosine sampling is less effective as we are randomly sampling over the entire hemisphere of reflection. As such, we are likely to find 
+        rays of light with very low or 0 radiance and thus the bunny appears dark and noisy. However, we know that for 
+        microfacet materials, the reflection lies within a lobe that is centred around the perfect reflection direction. As such, in importance sampling,
+        our random sample only comes from this lobe, and we can better approximate the reflective properties of the microfacet material.
+        
+      </p>
+
+      <div align="middle">
+                <img src="images/Part2_CBdragon_cobalt.png" align="middle" width="600px"/>
+                <figcaption align="middle"><i>Cobalt dragon. <br></i></figcaption>
         </div>
-        <p>Here is an example of how to include a simple formula:</p>
-        <p align="middle"><pre align="middle">a^2 + b^2 = c^2</pre></p>
-        <p>or, alternatively, you can include an SVG image of a LaTex formula.</p>
-        <p>This time it's your job to copy-paste in the rest of the sections :)</p>
 
+<h2 align="middle">Part 3: Environment Light</h3>
 
+  <p>
+    In environment lighting, instead of declaring light sources, we use an image to represent a 360-degree sphere of light around the scene. This is typically captured using 
+    a 360-degree camera. The idea behind that is that this picture captures a colour of light from the environment that will hit the 360-degree camera, and thus we can simulate the object, 
+    in this case our bunny, at the position of the camera. We do this in order to simulate both direct and indirect lighting lighting up the object, and is a convenient way to 
+    "transplant" virtual objects into such captured light environments. 
+  </p>
 
-    <h2 align="middle">A Few Notes On Webpages</h2>
-        <p>Here are a few problems students have encountered in the past. You will probably encounter these problems at some point, so don't wait until right before the deadline to check that everything is working. Test your website on the instructional machines early!</p>
-        <ul>
-        <li>Your main report page should be called index.html.</li>
-        <li>Be sure to include and turn in all of the other files (such as images) that are linked in your report!</li>
-        <li>Use only <em>relative</em> paths to files, such as <pre>"./images/image.jpg"</pre>
-        Do <em>NOT</em> use absolute paths, such as <pre>"/Users/student/Desktop/image.jpg"</pre></li>
-        <li>Pay close attention to your filename extensions. Remember that on UNIX systems (such as the instructional machines), capitalization matters. <pre>.png != .jpeg != .jpg != .JPG</pre>
-        <li>Be sure to adjust the permissions on your files so that they are world readable. For more information on this please see this tutorial: <a href="http://www.grymoire.com/Unix/Permissions.html">http://www.grymoire.com/Unix/Permissions.html</a></li>
-        <li>And again, test your website on the instructional machines early!</li>
+  In this part, I used the field.exr environment light.
+
+  <br><br>
+
+  <div align="middle">
+      <img src="images/Part3_field_exr.jpg" align="middle" width="600px"/>
+      <figcaption align="middle"><i>exr file in jpg format. <br></i></figcaption>
 </div>
+
+
+  <br><br>
+  <div align="middle">
+      <img src="images/Part3_probability_debug.png" align="middle" width="600px"/>
+      <figcaption align="middle"><i>Probability debug image for the distribution. <br></i></figcaption>
+  </div>
+
+  <div align="middle">
+      <table style="width=100%">
+        <tr>
+          <td>
+            <img src="images/Part3_bunnyunlit_hemisphere.png" align="middle" width="400px"/>
+            <figcaption align="middle"><i>Uniform sampling. <br>Bunny is noisy.</i></figcaption>
+          </td>
+          <td>
+              <img src="images/Part3_bunnyunlit_importance.png" align="middle" width="400px"/>
+              <figcaption align="middle"><i>Importance sampling. <br>Much less noise.</i></figcaption>
+            </td>
+        </tr>
+      </table>
+    </div>
+
+
+
+      <div align="middle">
+          <table style="width=100%">
+            <tr>
+              <td>
+                <img src="images/Part3_bunny_au_hemisphere.png" align="middle" width="400px"/>
+                <figcaption align="middle"><i>Uniform sampling. <br>Bunny is noisy.</i></figcaption>
+              </td>
+              <td>
+                  <img src="images/Part3_bunny_au_importance.png" align="middle" width="400px"/>
+                  <figcaption align="middle"><i>Importance sampling. <br>Much less noise.</i></figcaption>
+                </td>
+            </tr>
+          </table>
+        </div>
+
+
+        <p>
+            Cosine sampling is less effective as we are randomly sampling over the entire hemisphere of reflection. As such, we are likely to find 
+            rays of light with very low or 0 radiance and thus the bunny appears dark and noisy. However, we know that for 
+            microfacet materials, the reflection lies within a lobe that is centred around the perfect reflection direction. As such, in importance sampling,
+            our random sample only comes from this lobe, and we can better approximate the reflective properties of the microfacet material.
+          </p>
+
+
+
+<h2 align="middle">Part 4: Depth of Field</h2>
+
+<p>A pinhole camera model takes all the light passing through a point, which is what we did in project 3. However, now we implement a thin lens model in order to bend light towards the sensor. 
+  The effect is that only objects at the focal distance are in focus, and for everything else, the light rays from those areas end up blurry, since the light rays do not come from a single point at the focal 
+  distance.
+
+  <br>
+  In order to calculate the rays from the object refracted in the lens that reach the sensor, we perform these steps.
+  <ul>
+    <li>As per project 3, we calculate where on the sensor the pixel we are trying to render is located.</li>
+    <li>However, this location in camera space is now at z = 1.</li>
+    <li>We calculate the direction of the ray through the centre of the lens, since this ray does not get refracted.</li>
+    <li>We then calculate the t value of the ray at the focal distance.</li>
+    <li>We also randomly generate a point on the lens where the ray refracts to the sensor.</li>
+    <li>We then calculate the direction of this new refracted ray.</li>
+    <li>We convert the position and direction to world space, and add the camera position to this ray.</li>
+    <li>We then return the ray after setting the appropriate near and far clipping planes.</li> 
+  </ul>
+</p>
+
+<div align="middle">
+    <table style="width=100%">
+      <tr>
+        <td>
+          <img src="images/Part4aper0.05_length2.png" align="middle" width="400px"/>
+          <figcaption align="middle"><i>Shortest focal distance of 2. <br>Dragon snout is in focus.</i></figcaption>
+        </td>
+        <td>
+            <img src="images/Part4aper0.05_length2_3.png" align="middle" width="400px"/>
+            <figcaption align="middle"><i>Focal distance of 2.3. <br>Dragon snout to body is in focus.</i></figcaption>
+          </td>
+      </tr>
+      <br>
+      <tr>
+          <td>
+            <img src="images/Part4aper0.05_length2_6.png" align="middle" width="400px"/>
+            <figcaption align="middle"><i>Focal distance of 2.6. <br>Snout is blurry, body in focus.</i></figcaption>
+          </td>
+          <td>
+              <img src="images/Part4aper0.05_length3.2.png" align="middle" width="400px"/>
+              <figcaption align="middle"><i>Focal distance of 3.2 <br>Only tail in focus.</i></figcaption>
+            </td>
+        </tr>
+    </table>
+  </div>
+
+  <p>We see the sections of the dragon come in and out of focus as we adjust the focal distance further and further away from the 
+    dragon's snout. This is due to the divergent light rays at the focal plane intersecting at the sensor plane, but for the sections of the dragon 
+    where it is not at the focal distance, the rays do not perfectly converge and thus the image comes out blurry.
+  </p>
+
+  <div align="middle">
+      <table style="width=100%">
+        <tr>
+          <td>
+            <img src="images/Part4aper0.01.png" align="middle" width="400px"/>
+            <figcaption align="middle"><i>Aperture of 0.01. <br>Whole image is in focus.</i></figcaption>
+          </td>
+          <td>
+              <img src="images/Part4aper0.03.png" align="middle" width="400px"/>
+              <figcaption align="middle"><i>Aperture of 0.03 <br>Edges of the Cornell box not in focus.</i></figcaption>
+            </td>
+        </tr>
+        <br>
+        <tr>
+            <td>
+              <img src="images/Part4aper0.05_length2.png" align="middle" width="400px"/>
+              <figcaption align="middle"><i>Aperture of 0.05. <br>Only the centre portion at the dragons mouth in focus.</i></figcaption>
+            </td>
+            <td>
+                <img src="images/Part4aper0.1.png" align="middle" width="400px"/>
+                <figcaption align="middle"><i>Aperture of 0.1 <br>Only the dragon's lips in focus.</i></figcaption>
+              </td>
+          </tr>
+      </table>
+    </div>
+    
+    <p>
+      As we adjust aperture, we control the amount of rays that are bent towards the sensor. Originally, if the aperture is very small, only a small portion of light rays are bent and thus only a small portion of the fringes 
+      of the photo are blurry. However, as we increase the aperture, more light rays are bent towards the sensor plane, and the fringes are not at the sensor plane, so it gets blurrier.
+    </p>
+
 </body>
 </html>
-
-
-
-

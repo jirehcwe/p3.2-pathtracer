@@ -16,7 +16,7 @@ void make_coord_space(Matrix3x3& o2w, const Vector3D& n) {
   if (fabs(h.x) <= fabs(h.y) && fabs(h.x) <= fabs(h.z)) h.x = 1.0;
   else if (fabs(h.y) <= fabs(h.x) && fabs(h.y) <= fabs(h.z)) h.y = 1.0;
   else h.z = 1.0;
-
+  
   z.normalize();
   Vector3D y = cross(h, z);
   y.normalize();
@@ -64,25 +64,25 @@ Spectrum MicrofacetBSDF::F(const Vector3D& wi) {
   // Compute Fresnel term for reflection on dielectric-conductor interface.
   // You will need both eta and etaK, both of which are Spectrum.
   Spectrum sumOfSquareNK = eta*eta + k*k;
-  double thetaI = getTheta(wi);
-  Spectrum fresnelPerpendicular = ((sumOfSquareNK) - 2*eta*cos(thetaI) + pow(cos(thetaI),2))/
+  double thetaI = getTheta(wi); 
+  Spectrum fresnelPerpendicular = ((sumOfSquareNK) - 2 * eta*cos(thetaI) + pow(cos(thetaI),2))/
                                 ((sumOfSquareNK) + 2*eta*cos(thetaI) + pow(cos(thetaI),2));
   Spectrum fresnelParallel =  ((sumOfSquareNK)*pow(cos(thetaI),2) - 2*eta*cos(thetaI) + 1)/
                               ((sumOfSquareNK)*pow(cos(thetaI),2) + 2*eta*cos(thetaI) + 1);
 
 
-  return (fresnelParallel + fresnelPerpendicular)/2;
+  return (fresnelParallel + fresnelPerpendicular)/2.0;
 }
 
 Spectrum MicrofacetBSDF::f(const Vector3D& wo, const Vector3D& wi) {
   // TODO: 2.1
   // Implement microfacet model here
+
+  Vector3D normal(0,0,1);
   
-  if (wi.z < 0 || wo.z < 0){
+  if (dot(normal, wi) < 0 || dot(normal, wo) < 0){
     return Spectrum();
   }
-
-  Vector3D normal = Vector3D(0, 0, 1);
 
   Vector3D halfVector = (wo + wi).unit();
 
@@ -97,13 +97,15 @@ Spectrum MicrofacetBSDF::sample_f(const Vector3D& wo, Vector3D* wi, float* pdf) 
 
   // *wi = cosineHemisphereSampler.get_sample(pdf);
   // return MicrofacetBSDF::f(wo, *wi);
+  
 
   Vector2D randomR = sampler.get_sample();
   double thetaH = atan(sqrt(-pow(alpha, 2)*log(1 - randomR.x)));
   double phiH = 2*PI*randomR.y;
   Vector3D normal = Vector3D(sin(thetaH)*cos(phiH), sin(thetaH)*sin(phiH), cos(thetaH));
   *wi = -wo + 2*dot(wo, normal)*normal;
-  if (cos_theta(*wi) < 0){
+  wi->normalize();
+  if (wi->z <= 0){
     pdf = 0;
     return Spectrum();
   }
@@ -114,7 +116,7 @@ Spectrum MicrofacetBSDF::sample_f(const Vector3D& wo, Vector3D* wi, float* pdf) 
   double pdfOmegaH = pdfThetaH*pdfPhiH/sin(thetaH);
   double pdfOmega = pdfOmegaH/(4*dot(*wi, normal));
   *pdf = pdfOmega;
-  return f(wo, *wi);
+  return  MicrofacetBSDF::f(wo, *wi);
 }
 
 // Refraction BSDF //
@@ -170,6 +172,7 @@ void BSDF::reflect(const Vector3D& wo, Vector3D* wi) {
 
   // TODO: 1.1
   // Implement reflection of wo about normal (0,0,1) and store result in wi.
+  
   Vector3D there = Vector3D(-wo.x, -wo.y, wo.z);
   *wi = there;
 
